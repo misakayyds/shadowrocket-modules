@@ -1,6 +1,13 @@
 # shadowrocket-modules
 
-适配 Shadowrocket（小火箭）的 iOS 模块与脚本。目前主要维护的是 B站增强模块，它基于 [kokoryh/Sparkle](https://github.com/kokoryh/Sparkle)，针对哔哩哔哩 9.17 之后的版本，修复了上游在小火箭上不生效的部分。
+适配 Shadowrocket（小火箭）的 iOS 模块与脚本，全部在真机上用小火箭日志验证过。社区里很多模块是为 Surge、Loon 写的，放到小火箭上经常因为 Map Local、Body Rewrite 等行为不一致而失效，这里的模块都改写成了小火箭能稳定执行的规则和脚本。
+
+| 模块 | 版本 | 说明 |
+| --- | --- | --- |
+| [哔哩哔哩增强](#哔哩哔哩增强shadowrocket-适配版) | V11 | 基于 Sparkle，去开屏、去暂停广告、空降助手章节 |
+| [百度网盘去广告](#百度网盘去广告shadowrocket-适配版) | 1.3.0 | 去开屏、首页推荐信息流、视频广告和聚合广告 SDK |
+
+安装方式都一样：在小火箭里开启 HTTPS 解密并信任证书，然后在「配置 → 模块」里粘贴安装链接添加。
 
 ## 哔哩哔哩增强（Shadowrocket 适配版）
 
@@ -71,10 +78,38 @@ Sparkle 官方只支持 Surge、Loon 和 Egern。小火箭的脚本环境只是�
 https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/modules/BaiduNetdisk-AdBlock.sgmodule
 ```
 
-去掉开屏广告、首页卡片和弹窗、视频广告、活动入口、游戏中心，以及首页金刚区里的小说、短剧等推广入口；首页下方信息流只保留“最近”和产品功能卡片。除了接口规则，还按域名屏蔽了 App 内置的聚合广告 SDK，包括百度 MobAds、腾讯广点通、穿山甲、快手联盟和十余家国内广告交易平台。这些域名规则对其他 App 里的同类广告同样生效。新版 App 的开屏和首页广告主要由 `/api/getsyscfg` 和 `/api/getconfig` 下发，网上流传的老规则只拦了 `pcs/adx` 这类旧接口，所以基本不起作用。本模块的规则主体来自 Kelee 的 BaiduNetDisk_remove_ads 插件（2026-10），并改写成小火箭能稳定执行的 `reject-dict` 和响应脚本。安装前请停用其他百度网盘去广告模块，装好后在 App 里清一次缓存。
+测试环境：iOS 27.2，百度网盘 13.36.0，Shadowrocket 最新版。
+
+### 功能
+
+- 去除开屏广告和视频广告。
+- 首页下方的推荐信息流只保留“最近”和产品功能卡片，去掉其余推荐和推广卡片。
+- 首页金刚区去掉小说、短剧、打印、求职等推广入口。
+- 去掉活动入口、福利列表、游戏中心和会员广告。
+- 按域名屏蔽 App 内置的聚合广告 SDK，包括百度 MobAds、腾讯广点通、穿山甲、快手联盟和十余家国内广告交易平台。这些域名规则对其他 App 里的同类广告同样生效。
+
+### 为什么老规则不起作用
+
+新版百度网盘的开屏和首页广告配置主要由 `/api/getsyscfg` 和 `/api/getconfig` 下发，网上流传的老规则只拦了 `pcs/adx` 这类旧接口，所以基本不起作用。此外，网盘的开屏和视频广告位接的是聚合广告：同一个广告位会同时向十几家广告平台竞价，只拦百度自家的接口或一两个 SDK，其他平台照样能把广告填上，所以必须把这些平台的域名一起屏蔽。首页信息流则是由 `feed/cardinfos` 一次性下发的，里面混着正常卡片，不能整体拒绝，只能用响应脚本按卡片类型过滤。
+
+接口规则主体参考了 Kelee 的 BaiduNetDisk_remove_ads 插件（2026-10），并改写成小火箭能稳定执行的 `reject-dict` 和响应脚本；信息流过滤逻辑参考了 ShiinaWong 的清理脚本。
+
+### 安装
+
+1. 停用其他所有百度网盘去广告模块，避免规则互相覆盖。
+2. 添加上面的链接，确认模块已启用，并且 MITM 里包含 `pan.baidu.com`。
+3. 彻底关闭网盘后重新打开，并在 App 里清一次缓存。已经下载到本地的广告素材可能还会再播一两次，之后就不会再出现。
+
+### 文件说明
+
+| 文件 | 作用 |
+| --- | --- |
+| `modules/BaiduNetdisk-AdBlock.sgmodule` | 模块本体 |
+| `scripts/baidunetdisk-feed.js` | 过滤首页信息流 `feed/cardinfos` |
+| `scripts/baidunetdisk-kingkong.js` | 过滤首页金刚区 `feed/kingkongdistrict` |
 
 ## 致谢与许可
 
-核心脚本来自 [kokoryh/Sparkle](https://github.com/kokoryh/Sparkle)，空降数据来自 BilibiliSponsorBlock 社区。开屏处理参考了 Walvez、lalifeier、app2smile 等人的公开方案。
+B站模块的核心脚本来自 [kokoryh/Sparkle](https://github.com/kokoryh/Sparkle)，空降数据来自 BilibiliSponsorBlock 社区，开屏处理参考了 Walvez、lalifeier、app2smile 等人的公开方案。百度网盘模块参考了 Kelee、ShiinaWong 等人的公开规则。
 
 由于包含 Sparkle 的衍生代码，本仓库以 [GPL-3.0](LICENSE) 发布。本项目仅供学习交流使用。
