@@ -4,7 +4,7 @@
   function varint(b, p) { let v = 0, m = 1, x; do { x = b[p.i++]; v += (x & 127) * m; m *= 128; } while (x & 128); return v; }
   try {
     let b = $request.body;
-    if (!b || typeof b === "string" || b.length < 6) { console.log("[SponsorBlock-capture] no binary body"); $notification.post("B站空降调试", "", "0/4 请求体为空 type=" + typeof b); return $done({}); }
+    if (!b || typeof b === "string" || b.length < 6) { console.log("[SponsorBlock-capture] no binary body"); return $done({}); }
     let payload = b.subarray(5);
     if (b[0]) {
       if (typeof $utils !== "undefined" && $utils.ungzip) payload = $utils.ungzip(payload);
@@ -19,8 +19,8 @@
     }
     if (aid) {
       $persistentStore.write(JSON.stringify({ aid: String(aid), cid: String(cid), ts: Date.now() }), "bili_sr_vp");
-      console.log(`[SponsorBlock-capture] aid=${aid} cid=${cid}`); $notification.post("B站空降调试", "", `0/4 请求阶段抓到 aid=${aid}`);
+      console.log(`[SponsorBlock-capture] aid=${aid} cid=${cid}`);
     } else console.log("[SponsorBlock-capture] aid not found");
-  } catch (e) { console.log("[SponsorBlock-capture] error " + e); $notification.post("B站空降调试", "", "0/4 抓取出错 " + e); }
+  } catch (e) { console.log("[SponsorBlock-capture] error " + e); }
   $done({});
 })();

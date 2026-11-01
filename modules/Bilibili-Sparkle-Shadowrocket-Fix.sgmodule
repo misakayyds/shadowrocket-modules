@@ -1,31 +1,22 @@
-#!name=哔哩哔哩增强（小火箭修复 V10.3 调试）
-#!desc=V10：空降改为请求阶段先记录aid/cid，响应阶段再查SponsorBlock并注入「广告」章节；开屏长间隔+peak清理。仅启用本模块。
+#!name=哔哩哔哩增强（Shadowrocket 适配版）
+#!desc=基于 kokoryh/Sparkle 的 Shadowrocket 适配版，适用于 B站 iOS 9.17+：去开屏/暂停/信息流广告、精简界面、评论区优化，空降助手在进度条显示「广告」章节（需手动点击跳过）。请勿与其他 B站模块同时启用。
 #!category=Enhancement
+#!author=misakayyds（适配）, kokoryh（Sparkle 原作者）
+#!homepage=https://github.com/misakayyds/shadowrocket-modules
+#!version=11.0.0
 
-# 2026-11-01 / V9（log2 + Sparkle caf42c48 源码）
+# 版本：V11（2026-11-01），测试环境 iOS 27.2 + 哔哩哔哩 9.17.0（91700100）
+# 上游：https://github.com/kokoryh/Sparkle（GPL-3.0，官方不支持 Shadowrocket，本模块为第三方适配）
 #
-# 【空降 / 9.17】
-# Sparkle request.js 对 ViewProgress 流程：http-request → $httpClient 重拉 gRPC(ce) + 拉 bsbsb(dn)
-# → 注入 videoGuide.videoPoint（章节文案「广告」）→ $done({response})。
-# 版本≥91700000 时 isDanmakuAirborneEffective=false，必须走 ViewProgress 章节而非弹幕。
-# 证据：V7会话 22:19:08 已出现 DOMAIN,bsbsb.top（dn成功），但无章节 → ce/fakeResponse 链在 SR 上
-# 很可能失败/被忽略（ce 未设 alpn=h2；Loon适配器才设了 h2）。
-# V9：bilibili.protobuf.airborne.sr.js = Sparkle request 补丁：
-#   - 以 http-response 运行，复用真实响应，跳过 ce
-#   - $done({response}) 展开为 {body,headers,status}
-# 并从 protobuf.response 的 pattern 中移除 ViewProgress，避免第二段脚本覆盖章节。
-#
-# 【热启动开屏】
-# 用户已清缓存/重装后热启动仍有广告。V7热启动(22:18:29)只打 splash/list；
-# 同会话 peak/download 更早出现 → brand_splash 素材可在进程内预载后热启展示。
-# V9 splash 脚本：list 用 Sparkle 形（list:[{}], interval=31536000）；并清 peak brand_splash。
-# ColdStart/GetColdStartDeferredData 仍无公开空包，不伪造。
-#
-# 脚本文件（须与模块同目录，本地导入）：
-#   bilibili.protobuf.airborne.sr.js
-#   bilibili-splash-sr.js
-#
-# 参考：kokoryh/Sparkle caf42c48、Walvez、lalifeier、app2smile、LOWERTOP/Shadowrocket
+# 相对上游的主要改动：
+# 1. 空降助手：上游在请求阶段重新发起 gRPC 请求并伪造响应，在小火箭上跑不通。这里改为
+#    请求阶段记录 aid/cid（bilibili-viewprogress-capture.js），响应阶段查询 SponsorBlock（bsbsb.top）
+#    并把「广告」章节写进 ViewProgress 的真实响应（bilibili-airborne-sr.js）。章节时间统一取整，
+#    避免小火箭 BigInt 解析小数报错。9.17 起无法自动跳过，只能手动点击章节。
+# 2. 开屏广告：小火箭的 Map Local 会被当成 REJECT（404），客户端随即回退到缓存广告，
+#    所以改用响应脚本返回完整空结构，并清理 peak/download 里的 brand_splash（bilibili-splash-sr.js）。
+# 3. 暂停广告：PlayPause / TFInfo / ViewEndPage 在响应阶段替换为空 gRPC 消息（bilibili-grpc-empty.js）。
+# 4. 拒绝 B站 API 的 UDP/443（QUIC）并删除 Alt-Svc，确保请求走 HTTPS 才能被解密改写。
 
 [Rule]
 AND,((DOMAIN,grpc.biliapi.net),(PROTOCOL,UDP),(DST-PORT,443)),REJECT-NO-DROP,pre-matching
@@ -75,15 +66,14 @@ bilibili.peak = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)
 # —— 暂停广告 PlayPause / TFInfo / ViewEndPage：响应阶段替换为空 gRPC 消息（grpc 与 app 两个主机）——
 bilibili.playpause = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.(?:view\.v1\.View\/TFInfo|viewunite\.v1\.View\/(?:PlayPause|ViewEndPage))$,requires-body=1,binary-body-mode=1,max-size=-1,timeout=5,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-grpc-empty.js
 
-# —— 空降 9.17：http-response + SR 补丁脚本（勿再用上游 http-request/ce）——
-# argument 需含 sponsorBlock（非 "#"）；logLevel=1 便于抓脚本日志
+# —— 空降助手（9.17+）：请求阶段记录 aid/cid，响应阶段注入「广告」章节 ——
 bilibili.vp.capture = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,requires-body=1,binary-body-mode=1,max-size=-1,timeout=5,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-viewprogress-capture.js
-bilibili.airborne = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=15,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-airborne-sr-v103.js
+bilibili.airborne = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,argument="{"logLevel":"4","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=15,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-airborne-sr.js
 
 # 旧版弹幕空降（<9.17）仍可用；9.17+ 脚本内会 abort 该路径
-bilibili.airborne.dm = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.community\.service\.dm\.v1\.DM\/DmSegMobile$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-airborne-sr-v103.js
+bilibili.airborne.dm = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.community\.service\.dm\.v1\.DM\/DmSegMobile$,argument="{"logLevel":"4","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-airborne-sr.js
 
-bilibili.protobuf.request = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.viewunite\.v1\.View\/View|main\.community\.reply\.v1\.Reply\/MainList)$,argument="{"purifyComment":1,"logLevel":"1"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.request.js
+bilibili.protobuf.request = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.viewunite\.v1\.View\/View|main\.community\.reply\.v1\.Reply\/MainList)$,argument="{"purifyComment":1,"logLevel":"4"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.request.js
 
 bilibili.skin = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/resource\/show\/skin(?:\?|$),requires-body=1,max-size=-1,engine=webview,script-path=https://raw.githubusercontent.com/kokoryh/Script/master/js/bili-suit-diy.js
 
@@ -94,7 +84,7 @@ bilibili.json = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)
 bilibili.webpage = type=http-response,pattern=^https:\/\/www\.bilibili\.com(?::443)?\/blackboard\/era\/.+\.html(?:\?|$),requires-body=1,max-size=-1,engine=webview,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/webpage.bilibili.js
 
 # 注意：pattern 已去掉 ViewProgress，避免覆盖 airborne 注入的章节
-bilibili.protobuf.response = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.(?:show\.v1\.Popular\/Index|dynamic\.v2\.Dynamic\/DynAll|view(?:unite)?\.v1\.View\/(?:View|RelatesFeed|AIRelateAsync)|playurl\.v1\.PlayURL\/PlayView|playerunite\.v1\.Player\/PlayViewUnite)|polymer\.app\.search\.v1\.Search\/SearchAll|community\.service\.dm\.v1\.DM\/DmView|main\.community\.reply\.v1\.Reply\/MainList|pgc\.gateway\.player\.v2\.PlayURL\/PlayView)$,argument="{"displayUpList":"auto","purifyComment":1,"sponsorBlock":true,"logLevel":"1"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.response.js
+bilibili.protobuf.response = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.(?:show\.v1\.Popular\/Index|dynamic\.v2\.Dynamic\/DynAll|view(?:unite)?\.v1\.View\/(?:View|RelatesFeed|AIRelateAsync)|playurl\.v1\.PlayURL\/PlayView|playerunite\.v1\.Player\/PlayViewUnite)|polymer\.app\.search\.v1\.Search\/SearchAll|community\.service\.dm\.v1\.DM\/DmView|main\.community\.reply\.v1\.Reply\/MainList|pgc\.gateway\.player\.v2\.PlayURL\/PlayView)$,argument="{"displayUpList":"auto","purifyComment":1,"sponsorBlock":true,"logLevel":"4"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.response.js
 
 [MITM]
 h2 = true
