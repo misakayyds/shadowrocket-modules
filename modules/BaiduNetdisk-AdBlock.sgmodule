@@ -3,12 +3,26 @@
 #!category=Enhancement
 #!author=misakayyds（适配）, 可莉 / Maverick / 奶思（原始规则）
 #!homepage=https://github.com/misakayyds/shadowrocket-modules
-#!version=1.0.0
+#!version=1.1.0
 
 # 2026-11-01：原来用的 fmz200 / sr-adblock 版只拦截了 pcs/adx、welfare 等旧接口，新版 App 的开屏和首页广告
 # 主要由 /api/getsyscfg 和 /api/getconfig 下发（splash_advertise_*、business_ad_config_area 等配置）。
 # 规则主体来自 Kelee 的 BaiduNetDisk_remove_ads（2026-10）与 BruceWae 的游戏中心补充；
+# 1.1：根据真机日志补充广告 SDK 域名（百度 MobAds、腾讯 GDT）和 buy/ad/conf。
 # Surge/Loon 的 Map Local 和 jq 在小火箭上不可靠，这里改用 reject-dict 和响应脚本。
+
+[Rule]
+# 广告 SDK（日志确认百度网盘 13.36 直连这些域名拉开屏、信息流和视频广告）
+# 百度联盟 MobAds
+DOMAIN,mobads.baidu.com,REJECT,pre-matching
+DOMAIN,mobads-logs.baidu.com,REJECT,pre-matching
+DOMAIN,mobads-pre-config.cdn.bcebos.com,REJECT,pre-matching
+DOMAIN,afd.baidu.com,REJECT,pre-matching
+# 腾讯广点通 GDT（优量汇）
+DOMAIN,sdk.e.qq.com,REJECT,pre-matching
+DOMAIN-SUFFIX,gdt.qq.com,REJECT,pre-matching
+DOMAIN-SUFFIX,gdtimg.com,REJECT,pre-matching
+DOMAIN-SUFFIX,ugdtimg.com,REJECT,pre-matching
 
 [URL Rewrite]
 # 开屏、广告配置（核心）
@@ -20,6 +34,7 @@
 ^https:\/\/pan\.baidu\.com\/rest\/\d\.\d\/pcs\/adv\? - reject-dict
 ^https:\/\/pan\.baidu\.com\/api\/plugin\/get\? - reject-dict
 ^https:\/\/pan\.baidu\.com\/recommend\/query\/list\? - reject-dict
+^https:\/\/pan\.baidu\.com\/buy\/ad\/conf - reject-dict
 # 游戏中心
 ^https:\/\/pan\.baidu\.com\/rest\/2\.0\/membership\/user\?method=gamecenter - reject-dict
 ^https:\/\/pan\.baidu\.com\/act\/api\/conf\?.*conf_key=gameCenter - reject-dict
