@@ -1,5 +1,14 @@
 # 更新日志
 
+## YouTube 增强
+
+### 2.0.0（2026-11-02，测试中）
+
+- 拒绝 `initplayback`（onesie 开播请求），让 App 直接回退到 `v1/player`，修复详情页加载慢。
+- 去掉 `log_event` 请求脚本和 `log_event` / `config` 响应处理（只用于维护 Worker 密钥）。
+- 拒绝 `player/ad_break`，屏蔽新版中插广告。
+- 响应脚本固定在 Maasea 提交 65075cd。
+
 ## 百度网盘去广告
 
 ### 1.3.0（2026-11-02）

@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | [哔哩哔哩增强](#哔哩哔哩增强shadowrocket-适配版) | V11 | 基于 Sparkle，去开屏、去暂停广告、空降助手章节 |
 | [百度网盘去广告](#百度网盘去广告shadowrocket-适配版) | 1.3.0 | 去开屏、首页推荐信息流、视频广告和聚合广告 SDK |
+| [YouTube 增强](#youtube-增强shadowrocket-适配版) | 2.0.0（测试中） | 基于 Maasea，去广告并修复详情页加载慢 |
 
 安装方式都一样：在小火箭里开启 HTTPS 解密并信任证书，然后在「配置 → 模块」里粘贴安装链接添加。
 
@@ -108,8 +109,18 @@ https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/modules/B
 | `scripts/baidunetdisk-feed.js` | 过滤首页信息流 `feed/cardinfos` |
 | `scripts/baidunetdisk-kingkong.js` | 过滤首页金刚区 `feed/kingkongdistrict` |
 
+## YouTube 增强（Shadowrocket 适配版）
+
+安装链接：
+
+```
+https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/modules/YouTube-Enhance-Shadowrocket.sgmodule
+```
+
+基于 [Maasea/sgmodule](https://github.com/Maasea/sgmodule) 的 YouTube Enhance，去除视频、首页、搜索和 Shorts 广告，保留屏蔽上传按钮、字幕翻译等参数。原版在小火箭上点进视频详情页要等好几秒：新版 App 开播时会先发一个 `initplayback` 请求，原版用脚本解析它的加密请求体，处理不了时返回空响应，App 会换节点重试好几次才回退到普通的 `v1/player` 接口，而真正去广告的正是 `v1/player` 的响应脚本。本版直接拒绝 `initplayback`，让 App 立刻回退，同时去掉了每个 `log_event` 上的请求脚本。此外还补上了新版中插广告使用的 `player/ad_break` 接口（原版没有覆盖）。安装前请停用原版 YouTube 模块。
+
 ## 致谢与许可
 
-B站模块的核心脚本来自 [kokoryh/Sparkle](https://github.com/kokoryh/Sparkle)，空降数据来自 BilibiliSponsorBlock 社区，开屏处理参考了 Walvez、lalifeier、app2smile 等人的公开方案。百度网盘模块参考了 Kelee、ShiinaWong 等人的公开规则。
+B站模块的核心脚本来自 [kokoryh/Sparkle](https://github.com/kokoryh/Sparkle)，空降数据来自 BilibiliSponsorBlock 社区，开屏处理参考了 Walvez、lalifeier、app2smile 等人的公开方案。百度网盘模块参考了 Kelee、ShiinaWong 等人的公开规则。YouTube 模块的响应脚本来自 [Maasea/sgmodule](https://github.com/Maasea/sgmodule)。
 
 由于包含 Sparkle 的衍生代码，本仓库以 [GPL-3.0](LICENSE) 发布。本项目仅供学习交流使用。

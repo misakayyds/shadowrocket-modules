@@ -1,0 +1,24 @@
+#!name=YouTube 增强（Shadowrocket 适配版）
+#!desc=基于 Maasea YouTube Enhance：去除视频、首页、搜索、Shorts 广告，修复小火箭上点进详情页加载慢的问题。
+#!author=misakayyds（适配）, Maasea（原作者）
+#!homepage=https://github.com/misakayyds/shadowrocket-modules
+#!version=2.0.0
+#!arguments=屏蔽上传按钮:true,屏蔽选段按钮:true,屏蔽Shorts按钮:false,字幕翻译语言:off,启用调试模式:false
+#!arguments-desc=屏蔽参数：true / false\n字幕翻译语言：Google 翻译语言代码，off 为关闭\n启用调试模式：日常保持 false
+
+# 详情页慢的原因（2026-11-02 真机日志）：
+# 新版 App 点开视频时先向 googlevideo 发 initplayback（onesie，一次请求同时拿播放信息和视频流，广告也在里面）。
+# 原版模块用请求脚本读取并解析整个加密请求体，密钥对不上时返回空 200，App 会换节点重试多次才回退到 v1/player，
+# 日志里一次开播重试了 5 次 initplayback，再加上每个 log_event 都要过请求脚本，所以详情页要等好几秒。
+# 实际去广告靠的是回退后 v1/player 的响应脚本，所以这里直接拒绝 initplayback，让 App 立刻回退，省掉脚本和重试。
+# 另外补上新版中插广告接口 player/ad_break（Maasea/sgmodule#110，原版 pattern 没有覆盖）。
+
+[URL Rewrite]
+^https?:\/\/[\w-]+\.googlevideo\.com\/initplayback\?(?:.*&)?ack(?:=|&|$) - reject
+^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/player\/ad_break - reject
+
+[Script]
+youtube.response = type=http-response,pattern=^https:\/\/youtubei\.googleapis\.com\/youtubei\/v1\/(?:browse|next|player|search|reel\/reel_watch_sequence|guide|account\/get_setting|get_watch)(?:\?.*)?$,requires-body=1,max-size=-1,binary-body-mode=1,timeout=10,script-path=https://raw.githubusercontent.com/Maasea/sgmodule/65075cdb388fc5e3094afd7e7314c67b243f3525/Script/Youtube/youtube.response.js,argument="{"captionLang":"{{{字幕翻译语言}}}","blockUpload":{{{屏蔽上传按钮}}},"blockImmersive":{{{屏蔽选段按钮}}},"blockShorts":{{{屏蔽Shorts按钮}}},"debug":{{{启用调试模式}}}}"
+
+[MITM]
+hostname = %APPEND% *.googlevideo.com, youtubei.googleapis.com
