@@ -1,0 +1,41 @@
+#!name=百度网盘去广告（Shadowrocket 适配版）
+#!desc=移除百度网盘开屏广告、首页卡片和弹窗、活动入口、游戏中心，以及首页金刚区的小说、短剧等推广入口。改完首次使用建议清一次 App 缓存。
+#!category=Enhancement
+#!author=misakayyds（适配）, 可莉 / Maverick / 奶思（原始规则）
+#!homepage=https://github.com/misakayyds/shadowrocket-modules
+#!version=1.0.0
+
+# 2026-11-01：原来用的 fmz200 / sr-adblock 版只拦截了 pcs/adx、welfare 等旧接口，新版 App 的开屏和首页广告
+# 主要由 /api/getsyscfg 和 /api/getconfig 下发（splash_advertise_*、business_ad_config_area 等配置）。
+# 规则主体来自 Kelee 的 BaiduNetDisk_remove_ads（2026-10）与 BruceWae 的游戏中心补充；
+# Surge/Loon 的 Map Local 和 jq 在小火箭上不可靠，这里改用 reject-dict 和响应脚本。
+
+[URL Rewrite]
+# 开屏、广告配置（核心）
+^https:\/\/pan\.baidu\.com\/api\/getconfig\? - reject-dict
+^https:\/\/pan\.baidu\.com\/api\/getsyscfg\? - reject-dict
+# 弹窗、任务、活动、插件推荐
+^https:\/\/pan\.baidu\.com\/api\/taskscore\/tasklist\? - reject-dict
+^https:\/\/pan\.baidu\.com\/act\/api\/activityentry\? - reject-dict
+^https:\/\/pan\.baidu\.com\/rest\/\d\.\d\/pcs\/adv\? - reject-dict
+^https:\/\/pan\.baidu\.com\/api\/plugin\/get\? - reject-dict
+^https:\/\/pan\.baidu\.com\/recommend\/query\/list\? - reject-dict
+# 游戏中心
+^https:\/\/pan\.baidu\.com\/rest\/2\.0\/membership\/user\?method=gamecenter - reject-dict
+^https:\/\/pan\.baidu\.com\/act\/api\/conf\?.*conf_key=gameCenter - reject-dict
+^https:\/\/pan\.baidu\.com\/act\/v2\/gamecenter\/ - reject-dict
+# 旧规则（保留，兼容旧版本 App）
+^https:\/\/pan\.baidu\.com\/rest\/\d\.\d\/pcs\/adx - reject-dict
+^https:\/\/pan\.baidu\.com\/rest\/2\.0\/pcs\/ad\? - reject-dict
+^https:\/\/pan\.baidu\.com\/act\/v\d\/(?:bchannel|welfare)\/list - reject-dict
+^https:\/\/pan\.baidu\.com\/pmall\/order\/privilege\/info - reject-dict
+^https:\/\/pan\.baidu\.com\/api\/useractivity\/activity - reject-dict
+^https:\/\/ndstatic\.cdn\.bcebos\.com\/activity\/welfare\/ - reject
+^https:\/\/issuecdn\.baidupcs\.com\/issue\/netdisk\/guanggao - reject
+^https:\/\/update\.pan\.baidu\.com\/statistics - reject
+
+[Script]
+baidunetdisk.kingkong = type=http-response,pattern=^https:\/\/pan\.baidu\.com\/feed\/kingkongdistrict\?,requires-body=1,max-size=-1,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/baidunetdisk-kingkong.js
+
+[MITM]
+hostname = %APPEND% pan.baidu.com, ndstatic.cdn.bcebos.com, issuecdn.baidupcs.com, update.pan.baidu.com

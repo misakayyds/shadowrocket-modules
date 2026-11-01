@@ -63,6 +63,16 @@ Sparkle 官方只支持 Surge、Loon 和 Egern。小火箭的脚本环境只是�
 
 **是否支持 Surge、Loon？** 这几个软件请直接使用 [Sparkle 官方模块](https://github.com/kokoryh/Sparkle)，不需要用这个适配版。
 
+## 百度网盘去广告（Shadowrocket 适配版）
+
+安装链接：
+
+```
+https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/modules/BaiduNetdisk-AdBlock.sgmodule
+```
+
+去掉开屏广告、首页卡片和弹窗、活动入口、游戏中心，以及首页金刚区里的小说、短剧等推广入口。新版 App 的开屏和首页广告主要由 `/api/getsyscfg` 和 `/api/getconfig` 下发，网上流传的老规则只拦了 `pcs/adx` 这类旧接口，所以基本不起作用。本模块的规则主体来自 Kelee 的 BaiduNetDisk_remove_ads 插件（2026-10），并改写成小火箭能稳定执行的 `reject-dict` 和响应脚本。安装前请停用其他百度网盘去广告模块，装好后在 App 里清一次缓存。
+
 ## 致谢与许可
 
 核心脚本来自 [kokoryh/Sparkle](https://github.com/kokoryh/Sparkle)，空降数据来自 BilibiliSponsorBlock 社区。开屏处理参考了 Walvez、lalifeier、app2smile 等人的公开方案。
