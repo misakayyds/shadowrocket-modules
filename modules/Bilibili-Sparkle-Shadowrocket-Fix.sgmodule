@@ -1,0 +1,97 @@
+#!name=哔哩哔哩增强（小火箭修复 V9）
+#!desc=V8冷启动开屏已好；V9修热启动+空降：ViewProgress改http-response补丁脚本（跳过失败的gRPC重拉）；开屏用长间隔+list:[{}]；peak清brand_splash；protobuf.response去掉ViewProgress防覆盖。仅启用本模块；需同目录本地脚本。
+#!category=Enhancement
+
+# 2026-11-01 / V9（log2 + Sparkle caf42c48 源码）
+#
+# 【空降 / 9.17】
+# Sparkle request.js 对 ViewProgress 流程：http-request → $httpClient 重拉 gRPC(ce) + 拉 bsbsb(dn)
+# → 注入 videoGuide.videoPoint（章节文案「广告」）→ $done({response})。
+# 版本≥91700000 时 isDanmakuAirborneEffective=false，必须走 ViewProgress 章节而非弹幕。
+# 证据：V7会话 22:19:08 已出现 DOMAIN,bsbsb.top（dn成功），但无章节 → ce/fakeResponse 链在 SR 上
+# 很可能失败/被忽略（ce 未设 alpn=h2；Loon适配器才设了 h2）。
+# V9：bilibili.protobuf.airborne.sr.js = Sparkle request 补丁：
+#   - 以 http-response 运行，复用真实响应，跳过 ce
+#   - $done({response}) 展开为 {body,headers,status}
+# 并从 protobuf.response 的 pattern 中移除 ViewProgress，避免第二段脚本覆盖章节。
+#
+# 【热启动开屏】
+# 用户已清缓存/重装后热启动仍有广告。V7热启动(22:18:29)只打 splash/list；
+# 同会话 peak/download 更早出现 → brand_splash 素材可在进程内预载后热启展示。
+# V9 splash 脚本：list 用 Sparkle 形（list:[{}], interval=31536000）；并清 peak brand_splash。
+# ColdStart/GetColdStartDeferredData 仍无公开空包，不伪造。
+#
+# 脚本文件（须与模块同目录，本地导入）：
+#   bilibili.protobuf.airborne.sr.js
+#   bilibili-splash-sr.js
+#
+# 参考：kokoryh/Sparkle caf42c48、Walvez、lalifeier、app2smile、LOWERTOP/Shadowrocket
+
+[Rule]
+AND,((DOMAIN,grpc.biliapi.net),(PROTOCOL,UDP),(DST-PORT,443)),REJECT-NO-DROP,pre-matching
+AND,((DOMAIN,app.bilibili.com),(PROTOCOL,UDP),(DST-PORT,443)),REJECT-NO-DROP,pre-matching
+AND,((DOMAIN,api.bilibili.com),(PROTOCOL,UDP),(DST-PORT,443)),REJECT-NO-DROP,pre-matching
+AND,((DOMAIN,api.live.bilibili.com),(PROTOCOL,UDP),(DST-PORT,443)),REJECT-NO-DROP,pre-matching
+
+DOMAIN,cm.bilibili.com,REJECT,pre-matching,extended-matching
+DOMAIN-SUFFIX,miaozhen.com,REJECT,pre-matching,extended-matching
+
+DOMAIN,bsbsb.top,DIRECT
+
+DOMAIN,api.biliapi.com,REJECT,pre-matching,extended-matching
+DOMAIN,app.biliapi.com,REJECT,pre-matching,extended-matching
+DOMAIN,api.biliapi.net,REJECT,pre-matching,extended-matching
+DOMAIN,app.biliapi.net,REJECT,pre-matching,extended-matching
+AND,((DOMAIN-SUFFIX,chat.bilibili.com), (OR,((DOMAIN-KEYWORD,stun), (DOMAIN-KEYWORD,tracker), (DOMAIN-KEYWORD,p2p)))),REJECT,pre-matching
+DST-PORT,4480,REJECT-NO-DROP,pre-matching
+DST-PORT,4483,REJECT-NO-DROP,pre-matching
+DST-PORT,9102,REJECT-NO-DROP,pre-matching
+
+[URL Rewrite]
+^https?:\/\/upos-sz-static\.bilivideo\.com\/ssaxcode\/[^?]*-1-SPLASH(?:\.mp4)?(?:\?|$) - reject
+^http:\/\/(?:[0-9]{1,3}\.){3}[0-9]{1,3}:8000\/v1\/resource\/[0-9A-Za-z]{32}-1-SPLASH(?:\?|$) - reject
+^https:\/\/api\.bilibili\.com\/x\/mengqi\/v1\/resource(?:\?|$) - reject-dict
+^https:\/\/api\.live\.bilibili\.com\/xlive\/e-commerce-interface\/v1\/ecommerce-user\/get_shopping_info(?:\?|$) - reject-dict
+^https:\/\/line3-h5-mobile-api\.biligame\.com\/game\/live\/large_card_material(?:\?|$) - reject-dict
+^https:\/\/ap[ip]\.bilibili\.com\/x\/(?:resource\/(?:top\/activity|patch\/tab(?:\/v2)?)|v2\/search\/square|vip\/ads\/materials)(?:\?|$) - reject-dict
+^https:\/\/api\.bilibili\.com\/pgc\/activity\/deliver\/material\/receive(?:\?|$) - reject-dict
+^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.interface\.v1\.Search\/DefaultWords$ - reject-dict
+
+[Header Rewrite]
+http-response ^https:\/\/(?:app\.bilibili\.com|api\.bilibili\.com|api\.live\.bilibili\.com|grpc\.biliapi\.net)(?::443)?\/ header-del Alt-Svc
+
+[Body Rewrite]
+http-response-jq ^https:\/\/app\.bilibili\.com(?::443)?\/x\/resource\/peak\/download(?:\?|$) 'if type == "object" then if .code == 0 and (.data | type) == "object" then if (.data.resource | type) == "array" then .data.resource |= map(if type == "object" then if ((.type == "brand_splash") or ((.type | type) == "string" and (.type | test("splash";"i")))) and (.list | type) == "array" then .list = [] else . end else . end) else . end else . end else . end'
+http-response-jq ^https:\/\/api\.live\.bilibili\.com(?::443)?\/xlive\/open-interface\/v2\/tracker\/conf(?:\?|$) '.data.domains=["wss://tracker.chat.bilibili.com"]'
+http-response-jq ^https:\/\/api\.bilibili\.com(?::443)?\/x\/pd-proxy\/tracker(?:\?|$) '.data[][]?="stun.chat.bilibili.com:3478"'
+http-response-jq ^https:\/\/api\.bilibili\.com(?::443)?\/pgc\/view\/v2\/app\/season(?:\?|$) 'del(.data.payment)'
+http-response-jq ^https:\/\/api\.bilibili\.com(?::443)?\/pgc\/page\/channel(?:\?|$) '.data.modules |= map(select(.type != "TIP") | if .type == "BANNER" then .module_data.items |= map(select(.url | startswith("https://www.bilibili.com/blackboard/era/") | not)) else . end)'
+
+[Script]
+# —— 开屏 + peak：本地 bilibili-splash-sr.js（长间隔 + list:[{}] + 清 brand_splash）——
+bilibili.splash = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/v2\/splash\/(?:brand\/list|event\/list2?|list|show)(?:\?|$),requires-body=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-splash-sr.js
+bilibili.peak = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/resource\/peak\/download(?:\?|$),requires-body=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-splash-sr.js
+
+# —— 空降 9.17：http-response + SR 补丁脚本（勿再用上游 http-request/ce）——
+# argument 需含 sponsorBlock（非 "#"）；logLevel=1 便于抓脚本日志
+bilibili.airborne = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=15,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili.protobuf.airborne.sr.js
+
+# 旧版弹幕空降（<9.17）仍可用；9.17+ 脚本内会 abort 该路径
+bilibili.airborne.dm = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.community\.service\.dm\.v1\.DM\/DmSegMobile$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili.protobuf.airborne.sr.js
+
+bilibili.protobuf.request = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.viewunite\.v1\.View\/View|main\.community\.reply\.v1\.Reply\/MainList)$,argument="{"purifyComment":1,"logLevel":"1"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.request.js
+
+bilibili.skin = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/resource\/show\/skin(?:\?|$),requires-body=1,max-size=-1,engine=webview,script-path=https://raw.githubusercontent.com/kokoryh/Script/master/js/bili-suit-diy.js
+
+bilibili.live = type=http-response,pattern=^https:\/\/api\.live\.bilibili\.com(?::443)?\/xlive\/(?:app-interface\/v2\/index\/feed|app-room\/v1\/index\/getInfoBy(?:Room|User))(?:\?|$),requires-body=1,max-size=-1,engine=webview,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.json.js
+
+bilibili.json = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/(?:resource\/show\/tab\/v2|v2\/(?:feed\/index(?:\/story)?|account\/(?:mine(?:\/ipad)?|myinfo)))(?:\?|$),argument="{"showCreatorHub":0}",requires-body=1,max-size=-1,engine=webview,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.json.js
+
+bilibili.webpage = type=http-response,pattern=^https:\/\/www\.bilibili\.com(?::443)?\/blackboard\/era\/.+\.html(?:\?|$),requires-body=1,max-size=-1,engine=webview,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/webpage.bilibili.js
+
+# 注意：pattern 已去掉 ViewProgress，避免覆盖 airborne 注入的章节
+bilibili.protobuf.response = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.(?:show\.v1\.Popular\/Index|dynamic\.v2\.Dynamic\/DynAll|view(?:unite)?\.v1\.View\/(?:View|RelatesFeed|AIRelateAsync)|playurl\.v1\.PlayURL\/PlayView|playerunite\.v1\.Player\/PlayViewUnite)|polymer\.app\.search\.v1\.Search\/SearchAll|community\.service\.dm\.v1\.DM\/DmView|main\.community\.reply\.v1\.Reply\/MainList|pgc\.gateway\.player\.v2\.PlayURL\/PlayView)$,argument="{"displayUpList":"auto","purifyComment":1,"sponsorBlock":true,"logLevel":"1"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.response.js
+
+[MITM]
+h2 = true
+hostname = %APPEND% grpc.biliapi.net, app.bilibili.com, api.bilibili.com, api.live.bilibili.com, www.bilibili.com, line3-h5-mobile-api.biligame.com, upos-sz-static.bilivideo.com, cm.bilibili.com, bsbsb.top
