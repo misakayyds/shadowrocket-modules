@@ -1,4 +1,4 @@
-#!name=哔哩哔哩增强（小火箭修复 V10.1 调试）
+#!name=哔哩哔哩增强（小火箭修复 V10.2 调试）
 #!desc=V10：空降改为请求阶段先记录aid/cid，响应阶段再查SponsorBlock并注入「广告」章节；开屏长间隔+peak清理。仅启用本模块。
 #!category=Enhancement
 
@@ -71,6 +71,9 @@ http-response-jq ^https:\/\/api\.bilibili\.com(?::443)?\/pgc\/page\/channel(?:\?
 # —— 开屏 + peak：本地 bilibili-splash-sr.js（长间隔 + list:[{}] + 清 brand_splash）——
 bilibili.splash = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/v2\/splash\/(?:brand\/list|event\/list2?|list|show)(?:\?|$),requires-body=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-splash-sr.js
 bilibili.peak = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)?\/x\/resource\/peak\/download(?:\?|$),requires-body=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-splash-sr.js
+
+# —— 暂停广告 PlayPause / TFInfo / ViewEndPage：响应阶段替换为空 gRPC 消息（grpc 与 app 两个主机）——
+bilibili.playpause = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.(?:view\.v1\.View\/TFInfo|viewunite\.v1\.View\/(?:PlayPause|ViewEndPage))$,requires-body=1,binary-body-mode=1,max-size=-1,timeout=5,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-grpc-empty.js
 
 # —— 空降 9.17：http-response + SR 补丁脚本（勿再用上游 http-request/ce）——
 # argument 需含 sponsorBlock（非 "#"）；logLevel=1 便于抓脚本日志
