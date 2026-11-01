@@ -1,5 +1,5 @@
-#!name=哔哩哔哩增强（小火箭修复 V9）
-#!desc=V8冷启动开屏已好；V9修热启动+空降：ViewProgress改http-response补丁脚本（跳过失败的gRPC重拉）；开屏用长间隔+list:[{}]；peak清brand_splash；protobuf.response去掉ViewProgress防覆盖。仅启用本模块；需同目录本地脚本。
+#!name=哔哩哔哩增强（小火箭修复 V10）
+#!desc=V10：空降改为请求阶段先记录aid/cid，响应阶段再查SponsorBlock并注入「广告」章节；开屏长间隔+peak清理。仅启用本模块。
 #!category=Enhancement
 
 # 2026-11-01 / V9（log2 + Sparkle caf42c48 源码）
@@ -74,6 +74,7 @@ bilibili.peak = type=http-response,pattern=^https:\/\/app\.bilibili\.com(?::443)
 
 # —— 空降 9.17：http-response + SR 补丁脚本（勿再用上游 http-request/ce）——
 # argument 需含 sponsorBlock（非 "#"）；logLevel=1 便于抓脚本日志
+bilibili.vp.capture = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,requires-body=1,binary-body-mode=1,max-size=-1,timeout=5,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-viewprogress-capture.js
 bilibili.airborne = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=15,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili.protobuf.airborne.sr.js
 
 # 旧版弹幕空降（<9.17）仍可用；9.17+ 脚本内会 abort 该路径
