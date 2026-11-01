@@ -1,4 +1,4 @@
-#!name=哔哩哔哩增强（小火箭修复 V10.2 调试）
+#!name=哔哩哔哩增强（小火箭修复 V10.3 调试）
 #!desc=V10：空降改为请求阶段先记录aid/cid，响应阶段再查SponsorBlock并注入「广告」章节；开屏长间隔+peak清理。仅启用本模块。
 #!category=Enhancement
 
@@ -78,10 +78,10 @@ bilibili.playpause = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net
 # —— 空降 9.17：http-response + SR 补丁脚本（勿再用上游 http-request/ce）——
 # argument 需含 sponsorBlock（非 "#"）；logLevel=1 便于抓脚本日志
 bilibili.vp.capture = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,requires-body=1,binary-body-mode=1,max-size=-1,timeout=5,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-viewprogress-capture.js
-bilibili.airborne = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=15,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili.protobuf.airborne.sr.js
+bilibili.airborne = type=http-response,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.app\.view(?:unite)?\.v1\.View\/ViewProgress$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=15,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-airborne-sr-v103.js
 
 # 旧版弹幕空降（<9.17）仍可用；9.17+ 脚本内会 abort 该路径
-bilibili.airborne.dm = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.community\.service\.dm\.v1\.DM\/DmSegMobile$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili.protobuf.airborne.sr.js
+bilibili.airborne.dm = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.community\.service\.dm\.v1\.DM\/DmSegMobile$,argument="{"logLevel":"1","sponsorBlock":true}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/bilibili-airborne-sr-v103.js
 
 bilibili.protobuf.request = type=http-request,pattern=^https:\/\/(?:grpc\.biliapi\.net|app\.bilibili\.com)(?::443)?\/bilibili\.(?:app\.viewunite\.v1\.View\/View|main\.community\.reply\.v1\.Reply\/MainList)$,argument="{"purifyComment":1,"logLevel":"1"}",requires-body=1,binary-body-mode=1,max-size=-1,engine=webview,timeout=10,script-path=https://raw.githubusercontent.com/kokoryh/Sparkle/refs/heads/master/dist/bilibili.protobuf.request.js
 
