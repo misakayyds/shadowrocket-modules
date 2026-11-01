@@ -71,7 +71,7 @@ Sparkle 官方只支持 Surge、Loon 和 Egern。小火箭的脚本环境只是�
 https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/modules/BaiduNetdisk-AdBlock.sgmodule
 ```
 
-去掉开屏广告、首页卡片和弹窗、视频广告、活动入口、游戏中心，以及首页金刚区里的小说、短剧等推广入口。除了接口规则，还屏蔽了 App 内置的百度 MobAds 和腾讯广点通两个广告 SDK 的域名（这两条域名规则对其他 App 里的同类广告也生效）。新版 App 的开屏和首页广告主要由 `/api/getsyscfg` 和 `/api/getconfig` 下发，网上流传的老规则只拦了 `pcs/adx` 这类旧接口，所以基本不起作用。本模块的规则主体来自 Kelee 的 BaiduNetDisk_remove_ads 插件（2026-10），并改写成小火箭能稳定执行的 `reject-dict` 和响应脚本。安装前请停用其他百度网盘去广告模块，装好后在 App 里清一次缓存。
+去掉开屏广告、首页卡片和弹窗、视频广告、活动入口、游戏中心，以及首页金刚区里的小说、短剧等推广入口。除了接口规则，还按域名屏蔽了 App 内置的聚合广告 SDK，包括百度 MobAds、腾讯广点通、穿山甲、快手联盟和十余家国内广告交易平台。这些域名规则对其他 App 里的同类广告同样生效。新版 App 的开屏和首页广告主要由 `/api/getsyscfg` 和 `/api/getconfig` 下发，网上流传的老规则只拦了 `pcs/adx` 这类旧接口，所以基本不起作用。本模块的规则主体来自 Kelee 的 BaiduNetDisk_remove_ads 插件（2026-10），并改写成小火箭能稳定执行的 `reject-dict` 和响应脚本。安装前请停用其他百度网盘去广告模块，装好后在 App 里清一次缓存。
 
 ## 致谢与许可
 
