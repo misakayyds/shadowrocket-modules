@@ -2,8 +2,8 @@
 #!desc=基于 Maasea YouTube Enhance：去除视频、首页、搜索、Shorts 广告，修复小火箭上点进详情页加载慢的问题。
 #!author=misakayyds（适配）, Maasea（原作者）
 #!homepage=https://github.com/misakayyds/shadowrocket-modules
-#!version=2.0.0
-#!arguments=屏蔽上传按钮:true,屏蔽选段按钮:true,屏蔽Shorts按钮:false,字幕翻译语言:off,启用调试模式:false
+#!version=2.0.1
+#!arguments=屏蔽上传按钮:true,屏蔽选段按钮:true,屏蔽Shorts按钮:true,字幕翻译语言:off,启用调试模式:false
 #!arguments-desc=屏蔽参数：true / false\n字幕翻译语言：Google 翻译语言代码，off 为关闭\n启用调试模式：日常保持 false
 
 # 详情页慢的原因（2026-11-02 真机日志）：
