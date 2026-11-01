@@ -3,13 +3,14 @@
 #!category=Enhancement
 #!author=misakayyds（适配）, 可莉 / Maverick / 奶思（原始规则）
 #!homepage=https://github.com/misakayyds/shadowrocket-modules
-#!version=1.2.0
+#!version=1.3.0
 
 # 2026-11-01：原来用的 fmz200 / sr-adblock 版只拦截了 pcs/adx、welfare 等旧接口，新版 App 的开屏和首页广告
 # 主要由 /api/getsyscfg 和 /api/getconfig 下发（splash_advertise_*、business_ad_config_area 等配置）。
 # 规则主体来自 Kelee 的 BaiduNetDisk_remove_ads（2026-10）与 BruceWae 的游戏中心补充；
 # 1.1：根据真机日志补充广告 SDK 域名（百度 MobAds、腾讯 GDT）和 buy/ad/conf。
 # 1.2：日志显示网盘内置聚合广告（穿山甲、快手联盟及十余家国内 ADX），全部按域名屏蔽；补 buy/ad/get。
+# 1.3：首页信息流 feed/cardinfos 只保留“最近”和产品功能卡片；屏蔽 membership/advertise。
 # Surge/Loon 的 Map Local 和 jq 在小火箭上不可靠，这里改用 reject-dict 和响应脚本。
 
 [Rule]
@@ -63,6 +64,7 @@ DOMAIN-SUFFIX,massx.com,REJECT,pre-matching
 ^https:\/\/pan\.baidu\.com\/api\/plugin\/get\? - reject-dict
 ^https:\/\/pan\.baidu\.com\/recommend\/query\/list\? - reject-dict
 ^https:\/\/pan\.baidu\.com\/buy\/ad\/(?:conf|get) - reject-dict
+^https:\/\/pan\.baidu\.com\/rest\/2\.0\/membership\/advertise - reject-dict
 # 游戏中心
 ^https:\/\/pan\.baidu\.com\/rest\/2\.0\/membership\/user\?method=gamecenter - reject-dict
 ^https:\/\/pan\.baidu\.com\/act\/api\/conf\?.*conf_key=gameCenter - reject-dict
@@ -78,6 +80,7 @@ DOMAIN-SUFFIX,massx.com,REJECT,pre-matching
 ^https:\/\/update\.pan\.baidu\.com\/statistics - reject
 
 [Script]
+baidunetdisk.feed = type=http-response,pattern=^https:\/\/pan\.baidu\.com\/feed\/cardinfos\?,requires-body=1,max-size=-1,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/baidunetdisk-feed.js
 baidunetdisk.kingkong = type=http-response,pattern=^https:\/\/pan\.baidu\.com\/feed\/kingkongdistrict\?,requires-body=1,max-size=-1,timeout=10,script-path=https://raw.githubusercontent.com/misakayyds/shadowrocket-modules/main/scripts/baidunetdisk-kingkong.js
 
 [MITM]
